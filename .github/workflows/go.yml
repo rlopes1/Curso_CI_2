@@ -2,42 +2,62 @@ name: Go
 
 on:
   push:
-    branches: [ '*' ]
+    branches:
+      - '**'
   pull_request:
-    branches: [ '*' ]
+    branches:
+      - '**'
+  workflow_dispatch:
 
 jobs:
-
   test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go_version: ['1.18', '1.17', '>=1.18']
+        go_version: ['1.21', '1.22', '1.23']
+
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-    - name: Set up Go
-      uses: actions/setup-go@v3
-      with:
-        go-version: ${{ matrix.go_version }}
-      
-    - name: Build-DB
-      run: docker-compose build
-      
-    - name: Create-DB
-      run: docker-compose up -d
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go_version }}
+          cache: true
 
-    - name: Test
-      run: go test -v main_test.go 
-      
-  
+      - name: Debug docker
+        run: |
+          docker --version
+          docker compose version
+
+      - name: Build DB
+        run: docker compose build
+
+      - name: Create DB
+        run: docker compose up -d
+
+      - name: Test
+        run: go test -v ./...
+
+      - name: Shutdown DB
+        if: always()
+        run: docker compose down -v
+
   build:
     needs: test
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: ['ubuntu-latest', 'ubuntu-18.04']
+        os: ['ubuntu-latest', 'ubuntu-22.04']
+
     steps:
-    - uses: actions/checkout@v3
-    - name: Build
-      run: go build -v main.go
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+          cache: true
+
+      - name: Build
+        run: go build -v ./...
