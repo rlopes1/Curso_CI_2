@@ -37,6 +37,18 @@ jobs:
       - name: Create DB
         run: docker compose up -d
 
+      - name: Wait for Postgres
+        run: |
+          # tenta por até 30s
+          for i in $(seq 1 30); do
+            docker compose exec -T postgres pg_isready -U root && { echo "Postgres pronto"; exit 0; }
+            echo "Aguardando Postgres..."
+            sleep 1
+          done
+          echo "Postgres não ficou pronto — logs:" >&2
+          docker compose logs postgres
+          exit 1
+
       - name: Test
         run: go test -v ./...
 
